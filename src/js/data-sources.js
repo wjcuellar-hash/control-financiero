@@ -114,6 +114,7 @@ export function mergeExternalBases({ year, month, files = [], fallbackType = 'ex
   const monthData = loadMonth(year, month);
   const datasets = [];
   const filesRead = [];
+  const errors = [];
 
   files.forEach((file) => {
     try {
@@ -137,7 +138,10 @@ export function mergeExternalBases({ year, month, files = [], fallbackType = 'ex
         });
       });
     } catch (error) {
-      console.error(`[Importador] error de lectura archivo=${file.fileName || file.name || 'sin_nombre'}:`, error);
+      const failedName = file.fileName || file.name || 'sin_nombre';
+      const errorMessage = error?.message || String(error);
+      console.error(`[Importador] error de lectura archivo=${failedName}:`, error);
+      errors.push({ fileName: failedName, message: errorMessage });
     }
   });
 
@@ -150,7 +154,8 @@ export function mergeExternalBases({ year, month, files = [], fallbackType = 'ex
     importLog: {
       filesRead,
       datasets: datasets.map((dataset) => dataset.meta),
-      globalCrossCoverage
+      globalCrossCoverage,
+      errors
     }
   };
 }

@@ -7,6 +7,7 @@ El dashboard permite importar una o múltiples bases con estructuras distintas y
 - Mapea columnas por aliases hacia el esquema estándar.
 - Normaliza campos clave para análisis y cruce.
 - Emite logs de lectura, mapeo y cobertura.
+- Permite seleccionar una carpeta completa desde UI y procesar automáticamente todos los archivos compatibles.
 
 ## Configuración de aliases
 Archivo: `src/js/column-aliases.config.js`
@@ -33,9 +34,14 @@ nueva_fuente: ['palabra_clave_1', 'palabra_clave_2']
   - `window.ControlFinanciero.importBase(records, { fileName: 'pagos_abril.csv' })`
 - Importación múltiple:
   - `window.ControlFinanciero.importBases([{ fileName: 'pagos.csv', records }, { fileName: 'gestiones.csv', records: gestiones }])`
+- Importación automática desde carpeta:
+  1. Ir a la pestaña **Resumen**.
+  2. Clic en **Seleccionar Carpeta**.
+  3. El sistema detecta, filtra y lee `csv/xlsx/xls/txt`.
+  4. Cada base pasa por el normalizador existente y se integra al periodo activo.
 
 ## Logs disponibles
-En consola verás:
+En pantalla (panel de importación) y en consola verás:
 - archivo leído,
 - tipo detectado y confianza,
 - columnas reconocidas,
