@@ -8,6 +8,50 @@ El dashboard permite importar una o múltiples bases con estructuras distintas y
 - Normaliza campos clave para análisis y cruce.
 - Emite logs de lectura, mapeo y cobertura.
 - Permite seleccionar una carpeta completa desde UI y procesar automáticamente todos los archivos compatibles.
+- Ejecuta un motor de estrategia y priorización por registro al finalizar la normalización.
+- Genera bases finales listas para descarga por prioridad y canal sugerido.
+
+## Motor automático de estrategia y priorización
+Archivo: `src/js/strategy-engine.js`
+
+### Criterios usados por registro
+El motor consolida cada cliente por `npr/nit` y aplica reglas sobre:
+- `score` (si existe en la base),
+- `saldo_capital`,
+- `bucket`,
+- `dias_mora`,
+- `semaforo`,
+- pagos recientes (últimos 45 días),
+- compromisos activos,
+- canal autorizado,
+- estrategia del banco.
+
+### Resultado automático por registro
+Cada registro queda con:
+- `prioridad`: `P0`, `P1`, `P2`, `P3` o `PB`,
+- `canal_sugerido`: `Marcador`, `WhatsApp`, `SMS`, `Email`, `Blaster` o `Manual`,
+- `justificacion` corta basada en las reglas disparadas.
+
+### Bases de salida generadas
+- `base_priorizada_general`
+- `base_marcador`
+- `base_whatsapp`
+- `base_sms`
+- `base_email`
+- `base_blaster`
+- `base_manual`
+
+Se guardan en `monthData.strategyEngine.outputs` y se pueden descargar vía:
+
+```js
+await window.ControlFinanciero.downloadStrategyBase('base_whatsapp')
+```
+
+También se puede consultar el paquete completo:
+
+```js
+await window.ControlFinanciero.getStrategyOutputs()
+```
 
 ## Configuración de aliases
 Archivo: `src/js/column-aliases.config.js`
@@ -48,3 +92,5 @@ En pantalla (panel de importación) y en consola verás:
 - columnas no mapeadas,
 - errores de lectura,
 - cobertura de cruce por archivo y global.
+- resumen por prioridad (`P0/P1/P2/P3/PB`).
+- resumen por canal sugerido (`Marcador/WhatsApp/SMS/Email/Blaster/Manual`).
