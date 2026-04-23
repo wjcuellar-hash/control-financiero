@@ -1,4 +1,4 @@
-import { mergeExternalBase, listSources, readFromSource } from './data-sources.js';
+import { mergeExternalBase, mergeExternalBases, listSources, readFromSource } from './data-sources.js';
 import { changeMonth, showTab, addItem, delItem, getCurrentPeriod, render } from './ui.js';
 
 window.changeMonth = changeMonth;
@@ -13,13 +13,26 @@ window.ControlFinanciero = {
   },
   importBase(records, options = {}) {
     const { year, month } = getCurrentPeriod();
-    mergeExternalBase({
+    const result = mergeExternalBase({
       year,
       month,
       records,
+      fileName: options.fileName || 'manual_import',
       fallbackType: options.fallbackType || 'expense'
     });
     render();
+    return result.importLog;
+  },
+  importBases(files, options = {}) {
+    const { year, month } = getCurrentPeriod();
+    const result = mergeExternalBases({
+      year,
+      month,
+      files,
+      fallbackType: options.fallbackType || 'expense'
+    });
+    render();
+    return result.importLog;
   },
   refreshFlash() {
     render();

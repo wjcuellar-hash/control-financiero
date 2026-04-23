@@ -3,6 +3,41 @@ import { normalizeDataset } from './normalizers.js';
 
 const sourceRegistry = new Map();
 
+function logImport(meta, level = 'info') {
+  const logger = console[level] || console.info;
+  logger(`[Importador] archivo=${meta.fileName} tipo=${meta.detectedType} confianza=${meta.confidence}`);
+  logger(`[Importador] columnas reconocidas: ${meta.recognizedColumns.join(', ') || 'ninguna'}`);
+  logger(`[Importador] columnas no mapeadas: ${meta.unmappedColumns.join(', ') || 'ninguna'}`);
+  logger(`[Importador] cobertura cruce IDs: ${meta.crossCoverage}%`);
+}
+
+function getRecordIdentity(record = {}) {
+  return record.standard?.npr || record.standard?.nit || '';
+}
+
+function buildCrossCoverageReport(normalizedSets = []) {
+  const ownerById = new Map();
+
+  normalizedSets.forEach(({ meta, rows }) => {
+    rows.forEach((row) => {
+      const id = getRecordIdentity(row);
+      if (!id) return;
+      if (!ownerById.has(id)) ownerById.set(id, new Set());
+      ownerById.get(id).add(meta.detectedType);
+    });
+  });
+
+  const ids = [...ownerById.values()];
+  const intersected = ids.filter((types) => types.size > 1).length;
+  const total = ids.length;
+
+  return {
+    uniqueIds: total,
+    crossedIds: intersected,
+    coverage: total ? Number(((intersected / total) * 100).toFixed(1)) : 0
+  };
+}
+
 export function registerSource(name, reader) {
   sourceRegistry.set(name, reader);
 }
@@ -16,16 +51,39 @@ export async function readFromSource(name, params) {
   if (!reader) {
     throw new Error(`Fuente no registrada: ${name}`);
   }
-  return reader(params);
+
+  try {
+    const payload = await reader(params);
+    return payload;
+  } catch (error) {
+    console.error(`[Importador] error de lectura en fuente ${name}:`, error);
+    throw error;
+  }
 }
 
 registerSource('localStorageMonth', async ({ year, month }) => loadMonth(year, month));
 
-export function mergeExternalBase({ year, month, records, fallbackType = 'expense' }) {
-  const monthData = loadMonth(year, month);
-  const normalized = normalizeDataset(records, fallbackType);
+registerSource('folderWatcher', async ({ files = [] } = {}) => {
+  return files.map((file) => ({
+    fileName: file.fileName || file.name || 'sin_nombre',
+    records: file.records || []
+  }));
+});
 
-  normalized.forEach((item) => {
+registerSource('connectedFeed', async ({ feed = [] } = {}) => {
+  return feed.map((entry, index) => ({
+    fileName: entry.fileName || `feed_${index + 1}`,
+    records: entry.records || []
+  }));
+});
+
+export function mergeExternalBase({ year, month, records, fallbackType = 'expense', fileName = 'manual_import' }) {
+  const monthData = loadMonth(year, month);
+
+  const normalizedSet = normalizeDataset(records, { fallbackType, fileName });
+  logImport(normalizedSet.meta);
+
+  normalizedSet.rows.forEach((item) => {
     const bucket = item.type === 'incomes' ? 'incomes' : 'expenses';
     monthData[bucket].push({
       concepto: item.concepto,
@@ -37,5 +95,62 @@ export function mergeExternalBase({ year, month, records, fallbackType = 'expens
   });
 
   saveMonth(year, month, monthData);
-  return monthData;
+
+  return {
+    monthData,
+    importLog: {
+      filesRead: [normalizedSet.meta.fileName],
+      datasets: [normalizedSet.meta],
+      globalCrossCoverage: {
+        uniqueIds: normalizedSet.meta.totalRows,
+        crossedIds: 0,
+        coverage: normalizedSet.meta.crossCoverage
+      }
+    }
+  };
+}
+
+export function mergeExternalBases({ year, month, files = [], fallbackType = 'expense' }) {
+  const monthData = loadMonth(year, month);
+  const datasets = [];
+  const filesRead = [];
+
+  files.forEach((file) => {
+    try {
+      const normalizedSet = normalizeDataset(file.records || [], {
+        fallbackType,
+        fileName: file.fileName || file.name || 'sin_nombre'
+      });
+
+      datasets.push(normalizedSet);
+      filesRead.push(normalizedSet.meta.fileName);
+      logImport(normalizedSet.meta);
+
+      normalizedSet.rows.forEach((item) => {
+        const bucket = item.type === 'incomes' ? 'incomes' : 'expenses';
+        monthData[bucket].push({
+          concepto: item.concepto,
+          cat: item.cat,
+          monto: item.monto,
+          nota: item.nota,
+          fecha: item.fecha
+        });
+      });
+    } catch (error) {
+      console.error(`[Importador] error de lectura archivo=${file.fileName || file.name || 'sin_nombre'}:`, error);
+    }
+  });
+
+  saveMonth(year, month, monthData);
+  const globalCrossCoverage = buildCrossCoverageReport(datasets);
+  console.info(`[Importador] cobertura global de cruce: ${globalCrossCoverage.coverage}% (${globalCrossCoverage.crossedIds}/${globalCrossCoverage.uniqueIds})`);
+
+  return {
+    monthData,
+    importLog: {
+      filesRead,
+      datasets: datasets.map((dataset) => dataset.meta),
+      globalCrossCoverage
+    }
+  };
 }
