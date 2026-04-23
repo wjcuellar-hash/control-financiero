@@ -6,6 +6,11 @@ import { renderCharts } from './charts.js';
 let curYear = new Date().getFullYear();
 let curMonth = new Date().getMonth();
 let activeTab = 'resumen';
+let importLogs = [];
+let importState = {
+  busy: false,
+  lastSummary: ''
+};
 
 const fmt = (v) => {
   if (Math.abs(v) >= 1000000) return `$${(v / 1000000).toFixed(1)}M`;
@@ -54,6 +59,26 @@ function renderResumen() {
     .join('');
 
   document.getElementById('content').innerHTML = `
+    <div class="chart-card">
+      <div class="chart-title">Importación automática de bases</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <button id="select-folder-btn" class="btn-add income" style="width:auto;padding:10px 14px;" ${importState.busy ? 'disabled' : ''}>
+          ${importState.busy ? 'Procesando carpeta…' : 'Seleccionar Carpeta'}
+        </button>
+        <span class="metric-badge badge-blue" style="margin-top:0;">${importState.busy ? 'Cargando archivos' : 'Listo para importar'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Formatos soportados: csv, xlsx, xls, txt.</div>
+      ${importState.lastSummary ? `<div class="alert alert-green" style="margin-bottom:10px;">${importState.lastSummary}</div>` : ''}
+      <div id="import-log-output" style="max-height:150px;overflow:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-family:var(--mono);font-size:11px;line-height:1.45;">
+        ${importLogs.length
+    ? importLogs
+      .slice()
+      .reverse()
+      .map((entry) => `<div style="margin-bottom:6px;color:${entry.level === 'error' ? '#f7a1ab' : entry.level === 'warn' ? '#f7d49a' : '#9ed7ff'};">[${entry.time}] ${entry.message}</div>`)
+      .join('')
+    : '<div style="color:var(--muted);">Sin actividad de importación todavía.</div>'}
+      </div>
+    </div>
     <div class="metrics-row">
       <div class="metric-card">
         <div class="metric-label">Ingresos</div>
@@ -292,4 +317,26 @@ export function delItem(type, index) {
 
 export function getCurrentPeriod() {
   return { year: curYear, month: curMonth, activeTab };
+}
+
+export function appendImportLog(message, level = 'info') {
+  importLogs.push({
+    message,
+    level,
+    time: new Date().toLocaleTimeString('es-CO', { hour12: false })
+  });
+  if (importLogs.length > 120) {
+    importLogs = importLogs.slice(-120);
+  }
+  if (activeTab === 'resumen') render();
+}
+
+export function clearImportLogs() {
+  importLogs = [];
+  if (activeTab === 'resumen') render();
+}
+
+export function setImportState(nextState = {}) {
+  importState = { ...importState, ...nextState };
+  if (activeTab === 'resumen') render();
 }
