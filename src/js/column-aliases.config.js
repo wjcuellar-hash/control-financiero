@@ -11,7 +11,8 @@ export const STANDARD_FIELDS = [
   'canal_autorizado',
   'fecha_pago',
   'valor_pago',
-  'estrategia'
+  'estrategia',
+  'score'
 ];
 
 export const COLUMN_ALIASES = {
@@ -28,6 +29,7 @@ export const COLUMN_ALIASES = {
   fecha_pago: ['fecha_pago', 'fecha_de_pago', 'payment_date', 'fecha_transaccion', 'fecha'],
   valor_pago: ['valor_pago', 'monto_pago', 'pago', 'valor', 'valor_recaudo', 'amount_paid'],
   estrategia: ['estrategia', 'accion', 'plan', 'estrategia_cobranza', 'strategy'],
+  score: ['score', 'scoring', 'score_riesgo', 'puntaje', 'rating_score'],
   concepto: ['concepto', 'descripcion', 'detalle', 'name', 'concept', 'item'],
   categoria: ['cat', 'categoria', 'category', 'rubro', 'tipo'],
   monto: ['monto', 'amount', 'valor', 'total', 'importe'],

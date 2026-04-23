@@ -1,5 +1,6 @@
 import { loadMonth, saveMonth } from './storage.js';
 import { normalizeDataset } from './normalizers.js';
+import { generateStrategyEngineResult } from './strategy-engine.js';
 
 const sourceRegistry = new Map();
 
@@ -94,6 +95,9 @@ export function mergeExternalBase({ year, month, records, fallbackType = 'expens
     });
   });
 
+  const strategyEngine = generateStrategyEngineResult([normalizedSet]);
+  monthData.strategyEngine = strategyEngine;
+
   saveMonth(year, month, monthData);
 
   return {
@@ -105,7 +109,8 @@ export function mergeExternalBase({ year, month, records, fallbackType = 'expens
         uniqueIds: normalizedSet.meta.totalRows,
         crossedIds: 0,
         coverage: normalizedSet.meta.crossCoverage
-      }
+      },
+      strategySummary: strategyEngine.summary
     }
   };
 }
@@ -145,9 +150,13 @@ export function mergeExternalBases({ year, month, files = [], fallbackType = 'ex
     }
   });
 
-  saveMonth(year, month, monthData);
   const globalCrossCoverage = buildCrossCoverageReport(datasets);
+  const strategyEngine = generateStrategyEngineResult(datasets);
+  monthData.strategyEngine = strategyEngine;
+  saveMonth(year, month, monthData);
   console.info(`[Importador] cobertura global de cruce: ${globalCrossCoverage.coverage}% (${globalCrossCoverage.crossedIds}/${globalCrossCoverage.uniqueIds})`);
+  console.info('[Importador] resumen prioridad:', strategyEngine.summary.porPrioridad);
+  console.info('[Importador] resumen canal:', strategyEngine.summary.porCanal);
 
   return {
     monthData,
@@ -155,7 +164,8 @@ export function mergeExternalBases({ year, month, files = [], fallbackType = 'ex
       filesRead,
       datasets: datasets.map((dataset) => dataset.meta),
       globalCrossCoverage,
-      errors
+      errors,
+      strategySummary: strategyEngine.summary
     }
   };
 }

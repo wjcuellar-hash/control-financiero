@@ -35,6 +35,9 @@ function renderResumen() {
   const utility = incomes - expenses;
   const netMargin = margin(data);
   const distribution = expenseDistribution(data).slice(0, 5);
+  const strategySummary = data.strategyEngine?.summary || null;
+  const prioritySummary = strategySummary?.porPrioridad || {};
+  const channelSummary = strategySummary?.porCanal || {};
 
   const mClass = utility >= 0 ? 'green' : 'red';
   const mBadge = utility >= 0 ? 'badge-green' : 'badge-red';
@@ -56,6 +59,13 @@ function renderResumen() {
       <div class="prog-track"><div class="prog-fill" style="width:${Math.min(percent, 100)}%;background:${color}"></div></div>
     </div>`;
     })
+    .join('');
+
+  const priorityBadges = Object.entries(prioritySummary)
+    .map(([label, count]) => `<span class="metric-badge badge-blue" style="margin-right:6px;margin-bottom:6px;">${label}: ${count}</span>`)
+    .join('');
+  const channelBadges = Object.entries(channelSummary)
+    .map(([label, count]) => `<span class="metric-badge badge-amber" style="margin-right:6px;margin-bottom:6px;">${label}: ${count}</span>`)
     .join('');
 
   document.getElementById('content').innerHTML = `
@@ -106,6 +116,18 @@ function renderResumen() {
       <div class="chart-title">Estrategia automática</div>
       <div style="font-size:13px;line-height:1.5;color:var(--text);">${buildStrategy(data)}</div>
       <div style="font-size:12px;margin-top:8px;color:var(--muted);">${buildFlashUpdate(data)}</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Motor automático de priorización</div>
+      ${strategySummary
+    ? `
+      <div style="font-size:12px;color:var(--text);margin-bottom:8px;">Registros procesados: <strong>${strategySummary.totalRegistros}</strong></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Distribución por prioridad</div>
+      <div style="display:flex;flex-wrap:wrap;margin-bottom:8px;">${priorityBadges || '<span style="color:var(--muted);">Sin datos</span>'}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Distribución por canal sugerido</div>
+      <div style="display:flex;flex-wrap:wrap;">${channelBadges || '<span style="color:var(--muted);">Sin datos</span>'}</div>
+      `
+    : '<div style="font-size:12px;color:var(--muted);">Importa bases para generar prioridad por registro y canales sugeridos.</div>'}
     </div>
     ${distribution.length ? `
     <div class="section-head"><span class="section-title">Distribución de gastos</span></div>

@@ -45,5 +45,9 @@ export function buildFlashUpdate(data) {
   const expenses = totalExpenses(data);
   const utility = incomes - expenses;
   const signal = utility >= 0 ? '🟢' : '🔴';
-  return `${signal} Flash: ingresos ${incomes.toFixed(0)}, gastos ${expenses.toFixed(0)}, utilidad ${utility.toFixed(0)}.`;
+  const strategySummary = data.strategyEngine?.summary;
+  const strategyPart = strategySummary
+    ? ` Prioridades ${JSON.stringify(strategySummary.porPrioridad)} · Canales ${JSON.stringify(strategySummary.porCanal)}.`
+    : '';
+  return `${signal} Flash: ingresos ${incomes.toFixed(0)}, gastos ${expenses.toFixed(0)}, utilidad ${utility.toFixed(0)}.${strategyPart}`;
 }

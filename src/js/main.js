@@ -1,4 +1,5 @@
 import { mergeExternalBase, mergeExternalBases, listSources, readFromSource } from './data-sources.js';
+import { toCsv } from './strategy-engine.js';
 import {
   changeMonth,
   showTab,
@@ -44,6 +45,31 @@ window.ControlFinanciero = {
     });
     render();
     return result.importLog;
+  },
+  async getStrategyOutputs() {
+    const { year, month } = getCurrentPeriod();
+    const monthData = await readFromSource('localStorageMonth', { year, month });
+    return monthData.strategyEngine || null;
+  },
+  async downloadStrategyBase(baseName = 'base_priorizada_general') {
+    const { year, month } = getCurrentPeriod();
+    const monthData = await readFromSource('localStorageMonth', { year, month });
+    const outputs = monthData?.strategyEngine?.outputs || {};
+    const rows = outputs[baseName];
+    if (!rows) throw new Error(`Base no encontrada: ${baseName}`);
+
+    const csv = toCsv(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${baseName}_${year}_${month + 1}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    return { baseName, total: rows.length };
   },
   refreshFlash() {
     render();
@@ -101,6 +127,10 @@ async function importFromFolder() {
     result.importLog.errors.forEach((entry) => {
       appendImportLog(`Error normalizando ${entry.fileName}: ${entry.message}`, 'error');
     });
+    if (result.importLog.strategySummary) {
+      appendImportLog(`Prioridades generadas: ${JSON.stringify(result.importLog.strategySummary.porPrioridad)}`);
+      appendImportLog(`Canales sugeridos: ${JSON.stringify(result.importLog.strategySummary.porCanal)}`);
+    }
 
     setImportState({
       busy: false,
